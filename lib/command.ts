@@ -1,0 +1,20 @@
+import { Message } from "discord.js";
+import { Scope } from "./decorators";
+
+export interface Command {
+  scope?: Scope,
+  exec: CommandExec,
+  description?: string,
+  example?: { in: string, out: string }
+}
+
+export type CommandExec = (message: Message, ...args: string[]) => Promise<string | void> | string | void;
+
+export enum role {
+  guest,
+  member,
+  guildadmin,
+  guildowner,
+  botadmin,
+  botowner
+}
