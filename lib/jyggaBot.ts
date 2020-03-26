@@ -2,7 +2,7 @@ import { Message, Client } from "discord.js";
 import { container, TokenProvider } from "tsyringe";
 import { Command } from './command';
 import { BotService } from "./services";
-import { OnReady } from "./hooks";
+import { OnReady, onMessage, onCommandUnrecognized, onCommandError } from "./hooks";
 import { BotModuleOptions, BotModuleMetakey, BotModuleCommandsMetakey, BotCommandMetaKey, BotCommandOptions } from "./decorators";
 
 export class JyggaBot {
@@ -35,7 +35,7 @@ export class JyggaBot {
 
   private startBotService() {
     container.registerInstance(BotService, new BotService(this.client));
-    this.providers.forEach(p=>{
+    this.providers.forEach(p => {
     });
   }
 
@@ -77,6 +77,7 @@ export class JyggaBot {
 
         } else {
           let id = `${mdlOpts.prefix || this.prefix}${cmdOpts.trigger}`; // what if i don't want to have prefix?
+          console.log(`registered: ${id}`);
           if (this.commandMap.has(id))
             throw new Error(`Duplicate commands: ${id}`);
           this.commandMap.set(id, commandItem);
@@ -93,9 +94,6 @@ export class JyggaBot {
   private findMatch(text: string): { cmd: Command, args: string[] } {
     let args = text.split(' ');
     let command = args.shift() as string;
-    if (command.indexOf(this.prefix) != 0) {
-      return;
-    }
     let mapValue = this.commandMap.get(command);
     if (mapValue) {
       return {
@@ -118,24 +116,34 @@ export class JyggaBot {
       if (message.author.id === this.client.user.id) {
         return;
       }
+
+      new Promise((resolve, reject) => {
+        this.modules.forEach((m: any) => {
+          if ((m as onMessage).botOnMessage) {
+            m.botOnMessage(message);
+          }
+        });
+        resolve();
+      });
+
       let match = this.findMatch(message.content);
       if (match == undefined) {
         return;
       }
 
-      if(match.cmd.scope){
+      if (match.cmd.scope) {
         let cmdScope = match.cmd.scope
-        if(cmdScope.guildId && cmdScope.guildId != message.guild.id){
+        if (cmdScope.guildId && cmdScope.guildId != message.guild.id) {
           throw new Error('Invalid guild');
         }
-        if(cmdScope.channelId && cmdScope.channelId != message.channel.id){
+        if (cmdScope.channelId && cmdScope.channelId != message.channel.id) {
           throw new Error('Invalid channel');
         }
         let guildMember = message.guild.member(message.author);
-        if(cmdScope.roleId && !guildMember.roles.has(cmdScope.roleId)){
+        if (cmdScope.roleId && !guildMember.roles.has(cmdScope.roleId)) {
           throw new Error('Invalid role');
         }
-        if(cmdScope.userId && cmdScope.userId != message.author.id){
+        if (cmdScope.userId && cmdScope.userId != message.author.id) {
           throw new Error('Invalid user');
         }
       }
@@ -145,14 +153,18 @@ export class JyggaBot {
         message.channel.send(out);
       }
     } catch (error) {
-      console.error({
-        sender: message.author,
-        message: message.content,
-        error
-      });
-
-      if (this.prefix) {
-        message.channel.send(error.message);
+      if (error.message == 'Command not recognized') {
+        this.modules.forEach((m: any) => {
+          if ((m as onCommandUnrecognized).botOnCommandUnrecognized) {
+            m.botOnCommandUnrecognized(message);
+          }
+        });
+      } else {
+        this.modules.forEach((m: any) => {
+          if ((m as onCommandError).botOnCommandError) {
+            m.botOnCommandError(message, error);
+          }
+        });
       }
     }
   }

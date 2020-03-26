@@ -38,6 +38,14 @@ export interface onClientUserSettingsUpdate {
   botOnClientUserSettingsUpdate(clientUserSettings: ClientUserSettings): void
 }
 
+export interface onCommandError {
+  botOnCommandError(message: Message, error: Error): void
+}
+
+export interface onCommandUnrecognized {
+  botOnCommandUnrecognized(message: Message): void
+}
+
 export interface onDebug {
   botOnDebug(info: string): void;
 }
