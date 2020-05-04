@@ -13,14 +13,14 @@
   "license": "ISC",
   "dependencies": {
     "discord.js": "^12.2.0",
-    "reflect-metadata": "^0.1.13"
+    "reflect-metadata": "^0.1.13",
+    "tsyringe": "^4.1.0"
   },
   "peerDependencies": {
     "discord.js": "^12.2.0"
   },
   "devDependencies": {
     "@types/node": "^12.7.4",
-    "@types/ws": "^7.2.4",
-    "tsyringe": "^4.1.0"
+    "@types/ws": "^7.2.4"
   }
 }
