@@ -6,7 +6,7 @@ export class CommandRegistry {
   public registerCommand(command: Command, trigger: string | RegExp, prefix?: string)  {
     let regExp = trigger as RegExp;
     if (!(trigger as RegExp).test) {
-      regExp = new RegExp(`^${prefix}${trigger.toString()}\\b`);
+      regExp = new RegExp(`^\\Q${prefix}\\E${trigger.toString()}\\b`);
     }
     this.regExRegistry.push({
       regExp,
