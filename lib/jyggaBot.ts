@@ -137,8 +137,8 @@ export class JyggaBot {
       });
 
       let match = this.commandRegistry.findMatch(message.content);
-      if (match == undefined) {
-        return;
+      if (match == null) {
+        throw new Error('Command not recognized');
       }
 
       if (match.scope) {
