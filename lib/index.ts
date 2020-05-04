@@ -4,4 +4,3 @@ export * from './services';
 export * from './command';
 export * from './hooks';
 export * from './decorators';
-export * from 'discord.js';
