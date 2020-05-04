@@ -4,11 +4,12 @@ import { Scope } from "./decorators";
 export interface Command {
   scope?: Scope,
   exec: CommandExec,
+  params?: any[],
   description?: string,
   example?: { in: string, out: string }
 }
 
-export type CommandExec = (message: Message, ...args: string[]) => Promise<string | void> | string | void;
+export type CommandExec = (...args: any[]) => Promise<string | void> | string | void;
 
 export enum role {
   guest,

@@ -13,6 +13,6 @@ export function BotModule<T>(options: BotModuleOptions = {
 }
 
 export interface BotModuleOptions{
-  prefix?: string | RegExp,
+  prefix?: string,
   scope?: Scope
 }

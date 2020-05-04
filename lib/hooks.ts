@@ -1,7 +1,5 @@
 import { 
   Channel, 
-  ClientUserGuildSettings, 
-  ClientUserSettings, 
   Collection,
   Emoji, 
   Guild,
@@ -30,14 +28,6 @@ export interface onChannelUpdate {
   botOnchannelUpdate(oldChannel: Channel, newChannel: Channel): void
 }
 
-export interface onClientUserGuildSettingsUpdate {
-  botOnClientUserGuildSettingsUpdate(clientUserGuildSettings: ClientUserGuildSettings): void
-}
-
-export interface onClientUserSettingsUpdate {
-  botOnClientUserSettingsUpdate(clientUserSettings: ClientUserSettings): void
-}
-
 export interface onCommandError {
   botOnCommandError(message: Message, error: Error): void
 }
@@ -48,10 +38,6 @@ export interface onCommandUnrecognized {
 
 export interface onDebug {
   botOnDebug(info: string): void;
-}
-
-export interface onDisconnect {
-  botOnDisconnec(event: CloseEvent): void
 }
 
 export interface onEmojiCreate {

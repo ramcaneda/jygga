@@ -4,6 +4,9 @@ import { Command } from './command';
 import { BotService } from "./services";
 import { OnReady, onMessage, onCommandUnrecognized, onCommandError } from "./hooks";
 import { BotModuleOptions, BotModuleMetakey, BotModuleCommandsMetakey, BotCommandMetaKey, BotCommandOptions } from "./decorators";
+import { log, LogLevel } from './loggging';
+import { CommandRegistry } from "./commandRegistry";
+import { CommandArgBuilder } from "./commandArgBuilder";
 
 export class JyggaBot {
 
@@ -20,22 +23,28 @@ export class JyggaBot {
 
   constructor(opts: {
     modules: any[],
-    providers: any[],
+    services: any[],
     prefix?: string,
     token?: string,
-    botOwnerId?: string
-  }) {
+    botOwnerId?: string,
+  }, private commandRegistry: CommandRegistry = new CommandRegistry()) {
     this.prefix = opts.prefix || '';
     this.client = new Client();
     this.startBotService();
     this.setUpEvents();
+    this.boostrapServices(opts.services);
     this.bootstrapModules(opts.modules);
     this.token = opts.token;
   }
 
   private startBotService() {
-    container.registerInstance(BotService, new BotService(this.client));
-    this.providers.forEach(p => {
+    container.register<BotService>(BotService, { useValue: new BotService(this.client) });
+  }
+
+  private boostrapServices(svcs: any[]) {
+    svcs.forEach((p) => {
+      let instance = container.resolve<any>(p);
+      container.register(p, { useValue: instance });
     });
   }
 
@@ -47,9 +56,12 @@ export class JyggaBot {
       let cmdPropKeys: string[] = Reflect.getMetadata(BotModuleCommandsMetakey, instance) || [];
       cmdPropKeys.forEach(prop => {
         let cmdOpts: BotCommandOptions = Reflect.getMetadata(BotCommandMetaKey, instance, prop);
+
+        let params = Reflect.getMetadata('design:paramtypes', instance, prop);
         let commandItem: Command = {
           exec: (instance[prop] as Function).bind(instance),
-          scope: {}
+          scope: {},
+          params
         };
 
         if (mdlOpts.scope) {
@@ -68,26 +80,24 @@ export class JyggaBot {
             roleId: cmdOpts.scope.roleId || commandItem.scope.roleId
           }
         }
-
+        let trigger = cmdOpts.trigger;
         if ((cmdOpts.trigger as RegExp).test) {
-          this.regexCmds.push({
-            exp: cmdOpts.trigger as RegExp,
-            cmd: commandItem
-          })
-
+          this.commandRegistry.registerCommand(commandItem, trigger);
+          log(`registered: ${cmdOpts.trigger.toString()}`);
         } else {
-          let id = `${mdlOpts.prefix || this.prefix}${cmdOpts.trigger}`; // what if i don't want to have prefix?
-          console.log(`registered: ${id}`);
-          if (this.commandMap.has(id))
-            throw new Error(`Duplicate commands: ${id}`);
-          this.commandMap.set(id, commandItem);
+          let id = `${mdlOpts.prefix || this.prefix}${cmdOpts.trigger}`;
+          let prefix = mdlOpts.prefix || this.prefix;
+          this.commandRegistry.registerCommand(commandItem, trigger, prefix);
+          log(`registered: ${id}`);
         }
+
+        this.commandRegistry.registerCommand(commandItem, trigger);
       });
     });
   }
 
   private setUpEvents() {
-    this.client.on('ready', this.onReady.bind(this));
+    this.client.once('ready', this.onReady.bind(this));
     this.client.on('message', this.onMessage.bind(this));
   }
 
@@ -126,13 +136,13 @@ export class JyggaBot {
         resolve();
       });
 
-      let match = this.findMatch(message.content);
+      let match = this.commandRegistry.findMatch(message.content);
       if (match == undefined) {
         return;
       }
 
-      if (match.cmd.scope) {
-        let cmdScope = match.cmd.scope
+      if (match.scope) {
+        let cmdScope = match.scope
         if (cmdScope.guildId && cmdScope.guildId != message.guild.id) {
           throw new Error('Invalid guild');
         }
@@ -140,7 +150,7 @@ export class JyggaBot {
           throw new Error('Invalid channel');
         }
         let guildMember = message.guild.member(message.author);
-        if (cmdScope.roleId && !guildMember.roles.has(cmdScope.roleId)) {
+        if (cmdScope.roleId && !guildMember.roles.resolve(cmdScope.roleId)) {
           throw new Error('Invalid role');
         }
         if (cmdScope.userId && cmdScope.userId != message.author.id) {
@@ -148,7 +158,10 @@ export class JyggaBot {
         }
       }
 
-      let out = await match.cmd.exec(message, ...match.args);
+      let argBuilder = new CommandArgBuilder(message, match, match.params);
+      let args = argBuilder.getArgs();
+
+      let out = await match.exec(...args);
       if (out) {
         message.channel.send(out);
       }
