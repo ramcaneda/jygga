@@ -4,7 +4,7 @@ import { Command } from './command';
 import { BotService } from "./services";
 import { OnReady, onMessage, onCommandUnrecognized, onCommandError } from "./hooks";
 import { BotModuleOptions, BotModuleMetakey, BotModuleCommandsMetakey, BotCommandMetaKey, BotCommandOptions } from "./decorators";
-import { log, LogLevel } from './loggging';
+import { log, LogLevel } from './logging';
 import { CommandRegistry } from "./commandRegistry";
 import { CommandArgBuilder } from "./commandArgBuilder";
 
