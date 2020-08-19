@@ -38,11 +38,13 @@ export class JyggaBot {
   }
 
   private startBotService() {
+    log(`bootstrapping BotService`);
     container.register<BotService>(BotService, { useValue: new BotService(this.client) });
   }
 
   private boostrapServices(svcs: any[]) {
     svcs.forEach((p) => {
+      log(`bootstrapping ${p.name}`);
       let instance = container.resolve<any>(p);
       container.register(p, { useValue: instance });
     });
@@ -50,11 +52,16 @@ export class JyggaBot {
 
   private bootstrapModules(mdls: any[]) {
     mdls.forEach(m => {
+      log(`bootstrapping ${m.name}`);
       let mdlOpts: BotModuleOptions = Reflect.getMetadata(BotModuleMetakey, m);
+      log(`instantiating ${m.name}`);
       let instance = container.resolve<any>(m);
       this.modules.push(instance);
+      log(`fetching all bot commands under ${m.name}`);
       let cmdPropKeys: string[] = Reflect.getMetadata(BotModuleCommandsMetakey, instance) || [];
       cmdPropKeys.forEach(prop => {
+        
+        log(`bootstrapping ${m.name}.${prop}`);
         let cmdOpts: BotCommandOptions = Reflect.getMetadata(BotCommandMetaKey, instance, prop);
 
         let params = Reflect.getMetadata('design:paramtypes', instance, prop);
@@ -150,7 +157,7 @@ export class JyggaBot {
           throw new Error('Invalid channel');
         }
         let guildMember = message.guild.member(message.author);
-        if (cmdScope.roleId && !guildMember.roles.resolve(cmdScope.roleId)) {
+        if (cmdScope.roleId && !guildMember.roles.cache.has(cmdScope.roleId)) {
           throw new Error('Invalid role');
         }
         if (cmdScope.userId && cmdScope.userId != message.author.id) {
